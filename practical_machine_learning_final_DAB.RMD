@@ -1,0 +1,123 @@
+---
+title: "Practical Machine Learning Project"
+author: "DAB"
+date: "February 22, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+#What you should submit
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+#Course Project Prediction Quiz Portion
+Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.
+
+#Reproducibility
+Due to security concerns with the exchange of R code, your code will not be run during the evaluation by your classmates. Please be sure that if they download the repo, they will be able to view the compiled HTML version of your analysis.
+	
+	
+
+## Download and read in the training and Testing data
+```{r}
+#Download the training and testing data
+
+train_URL <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+train_dest <- "c:/R/Practical Machine Learning/data/pml-training.csv"
+test_dest  <- "c:/R/Practical Machine Learning/data/pml-testing.csv"
+if (!file.exists("c:/R/Practical Machine Learning/data")) {
+  dir.create("c:/R/Practical Machine Learning/data")
+}
+if (!file.exists(train_dest)) {
+  download.file(train_URL, destfile=train_dest)
+}
+if (!file.exists(test_dest)) {
+  download.file(test_URL, destfile=test_dest)
+}
+
+#read in training and testing data
+train_in <- read.csv("c:/R/Practical Machine Learning/data/pml-training.csv")
+test_in <- read.csv("c:/R/Practical Machine Learning/data/pml-testing.csv")
+
+```
+
+## Load packages
+```{r echo=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+```
+
+## Split the Training set into 
+```{r echo=FALSE}
+split <- createDataPartition(train_in$classe, p=0.7, list=FALSE)
+d_train <- train_in[split, ]
+d_test <- train_in[-split, ]
+dim(d_train)
+dim(d_test)
+```
+
+## Remove vars with near zero variance
+```{r echo=FALSE}
+no_vars<- nearZeroVar(d_train)
+d_train <- d_train[, -no_vars]
+d_test  <- d_test[, -no_vars]
+dim(d_train)
+dim(d_test)
+```
+
+## Remove vars 90% or more NULL
+```{r echo=FALSE}
+null_90    <- sapply(d_train, function(x) mean(is.na(x))) > 0.90
+d_train <- d_train[, null_90==FALSE]
+d_test  <- d_test[, null_90==FALSE]
+dim(d_train)
+dim(d_test)
+```
+
+# remove identification only variables (columns 1 to 5)
+```{r echo=FALSE}
+d_train <- d_train[, -(1:5)]
+d_test  <- d_test[, -(1:5)]
+dim(d_train)
+dim(d_test)
+```
+
+
+# create a first model - Decision Tree
+```{r echo=FALSE}
+set.seed(1)
+model_1 <- rpart(classe ~ ., data=d_train, method="class")
+fancyRpartPlot(model_1)
+```
+
+# evaluate the decision tree with the d_test data set
+```{r echo=FALSE}
+pred_1 <- predict(model_1, d_test, type = "class")
+tree_res <- confusionMatrix(pred_1, d_test$classe)
+tree_res
+```
+
+
+# create a first model - Random Forest
+```{r echo=FALSE}
+set.seed(1)
+model_2 <- randomForest(classe ~ ., data=d_train)
+```
+
+# evaluate the random forest model with the d_test data set
+```{r echo=FALSE}
+pred_2 <- predict(model_2, d_test, type = "class")
+rf_res <- confusionMatrix(pred_2, d_test$classe)
+rf_res
+```
+
