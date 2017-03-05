@@ -139,7 +139,8 @@ pred_combo <- predict(model_comb, pred)
 confusionMatrix(pred_combo, pred$classe)
 ```
 
-# RF was better than the ensamble, so use the random forest to make the final predictions
+### RF was better than the ensamble, so use the random forest to make the final predictions
+####  The CART model has and accuracy of 73% while the random forest has an accuracy over 99%.  The ensamble two models used in the ensamble have an accuracy of 70% and 73% respectively, but when ensambles together have an accuracy of over 98%.  This is a great result but still doens't match the output from the random forest.  Since the RF model has and accuracy over 99% and a confidence interval of less than 1% I expect 19 or 20 of the final test set to be identified correctly.
 ```{r}
 fin <- predict(model_rf, test_in, type = "class")
 fin
