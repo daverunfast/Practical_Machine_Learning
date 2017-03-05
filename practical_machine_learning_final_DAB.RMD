@@ -57,67 +57,109 @@ library(rattle)
 library(randomForest)
 ```
 
-## Split the Training set into 
-```{r echo=FALSE}
-split <- createDataPartition(train_in$classe, p=0.7, list=FALSE)
-d_train <- train_in[split, ]
-d_test <- train_in[-split, ]
-dim(d_train)
-dim(d_test)
-```
-
 ## Remove vars with near zero variance
 ```{r echo=FALSE}
-no_vars<- nearZeroVar(d_train)
-d_train <- d_train[, -no_vars]
-d_test  <- d_test[, -no_vars]
-dim(d_train)
-dim(d_test)
+no_vars<- nearZeroVar(train_in)
+d_train_in <- train_in[, -no_vars]
+dim(d_train_in)
 ```
 
 ## Remove vars 90% or more NULL
 ```{r echo=FALSE}
-null_90    <- sapply(d_train, function(x) mean(is.na(x))) > 0.90
-d_train <- d_train[, null_90==FALSE]
-d_test  <- d_test[, null_90==FALSE]
-dim(d_train)
-dim(d_test)
+null_90    <- sapply(d_train_in, function(x) mean(is.na(x))) > 0.90
+d_train_in <- d_train_in[, null_90==FALSE]
+dim(d_train_in)
 ```
 
-# remove identification only variables (columns 1 to 5)
+# remove variables in columns 1-5, these vars are not measurements but identifications and times
 ```{r echo=FALSE}
-d_train <- d_train[, -(1:5)]
-d_test  <- d_test[, -(1:5)]
-dim(d_train)
-dim(d_test)
+d_train_in <- d_train_in[, -(1:5)]
+dim(d_train_in)
+```
+
+
+## Split the Training set into 
+```{r echo=FALSE}
+split <- createDataPartition(d_train_in$classe, p=0.7, list=FALSE)
+d_train <- d_train_in[split, ]
+d_test <- d_train_in[-split, ]
 ```
 
 
 # create a first model - Decision Tree
 ```{r echo=FALSE}
 set.seed(1)
-model_1 <- rpart(classe ~ ., data=d_train, method="class")
-fancyRpartPlot(model_1)
+model_rpart <- rpart(classe~.,data=d_train,method="class")
+fancyRpartPlot(model_rpart)
 ```
-
 # evaluate the decision tree with the d_test data set
 ```{r echo=FALSE}
-pred_1 <- predict(model_1, d_test, type = "class")
-tree_res <- confusionMatrix(pred_1, d_test$classe)
-tree_res
+pred_rpart <- predict(model_rpart, d_test, type = "class")
+rpart_res <- confusionMatrix(pred_rpart, d_test$classe)
+rpart_res
 ```
 
-
-# create a first model - Random Forest
+# create a second model - Random Forest
 ```{r echo=FALSE}
 set.seed(1)
-model_2 <- randomForest(classe ~ ., data=d_train)
+model_rf<-randomForest(classe ~ ., data=d_train)
 ```
-
 # evaluate the random forest model with the d_test data set
 ```{r echo=FALSE}
-pred_2 <- predict(model_2, d_test, type = "class")
-rf_res <- confusionMatrix(pred_2, d_test$classe)
+pred_rf <- predict(model_rf, d_test, type = "class")
+rf_res <- confusionMatrix(pred_rf, d_test$classe)
 rf_res
 ```
 
+# create a combined model
+```{r echo=FALSE}
+set.seed(1)
+# Gradient Boosting
+model_gbm<- train(classe~.,data=d_train,method="gbm")
+```
+# evaluate the gradient boosting model with the d_test data set
+```{r echo=FALSE}
+pred_gbm <- predict(model_gbm, d_test)
+gbm_res <- confusionMatrix(pred_gbm, d_test$classe)
+gbm_res
+```
+
+# create a combined (third) model
+```{r echo=FALSE}
+set.seed(1)
+#Linear Discriminant Analysis
+model_lda <- train(classe ~ ., data=d_train, method="lda")
+```
+# evaluate the gradient boosting model with the d_test data set
+```{r echo=FALSE}
+
+pred_gbm <- predict(model_gbm, d_test)
+gbm_res <- confusionMatrix(pred_gbm, d_test$classe)
+gbm_res
+```
+# evaluate the LDA
+```{r echo=FALSE}
+pred_lda <- predict(model_lda, d_test)
+lda_res <- confusionMatrix(pred_lda, d_test$classe)
+lda_res
+```
+
+
+# combine lda and gbm
+```{r echo=FALSE}
+pred <- data.frame(pred_gbm, pred_lda, classe=d_test$classe)
+```
+
+
+# model combo
+```{r echo=FALSE}
+model_comb <- train(classe ~ ., method="rf", data=pred)
+#in-sample error
+pred_combo <- predict(model_comb, pred)
+confusionMatrix(pred_combo, pred$classe)
+```
+# RF was better than the ensamble, so use the random forest to make the final predictions
+```{r echo=FALSE}
+fin <- predict(model_rf, test_in, type = "class")
+fin
+```
