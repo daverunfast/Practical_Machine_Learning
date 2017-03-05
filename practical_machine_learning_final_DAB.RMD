@@ -24,9 +24,7 @@ Due to security concerns with the exchange of R code, your code will not be run 
 	
 
 ## Download and read in the training and Testing data
-```{r}
-#Download the training and testing data
-
+```{r }
 train_URL <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 test_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 train_dest <- "c:/R/Practical Machine Learning/data/pml-training.csv"
@@ -48,7 +46,7 @@ test_in <- read.csv("c:/R/Practical Machine Learning/data/pml-testing.csv")
 ```
 
 ## Load packages
-```{r echo=FALSE}
+```{r  }
 library(caret)
 library(rpart)
 library(rpart.plot)
@@ -56,110 +54,93 @@ library(RColorBrewer)
 library(rattle)
 library(randomForest)
 ```
-
-## Remove vars with near zero variance
-```{r echo=FALSE}
+# Clean up data set
+### Remove vars with near zero variance
+```{r }
 no_vars<- nearZeroVar(train_in)
 d_train_in <- train_in[, -no_vars]
 dim(d_train_in)
 ```
-
-## Remove vars 90% or more NULL
-```{r echo=FALSE}
+### Remove vars 90% or more NULL
+```{r }
 null_90    <- sapply(d_train_in, function(x) mean(is.na(x))) > 0.90
 d_train_in <- d_train_in[, null_90==FALSE]
 dim(d_train_in)
 ```
-
-# remove variables in columns 1-5, these vars are not measurements but identifications and times
-```{r echo=FALSE}
+### remove variables in columns 1-5, these vars are not measurements but identifications and times
+```{r }
 d_train_in <- d_train_in[, -(1:5)]
 dim(d_train_in)
 ```
-
-
-## Split the Training set into 
-```{r echo=FALSE}
+### Split the Training set into 
+```{r }
 split <- createDataPartition(d_train_in$classe, p=0.7, list=FALSE)
 d_train <- d_train_in[split, ]
 d_test <- d_train_in[-split, ]
 ```
 
+# Create Model
+##### Try out a Cart decision tree, a random forest, and a ensamble of gbm and lda. The training data set has been devided 70%/30% into a train and text sets.  method will be to create each of the three models usin the training set and evaluate on the testing set, compare residuals and apply the best model to the 20 test cases.
 
-# create a first model - Decision Tree
-```{r echo=FALSE}
+### create a first model - Decision Tree
+```{r }
 set.seed(1)
 model_rpart <- rpart(classe~.,data=d_train,method="class")
 fancyRpartPlot(model_rpart)
 ```
-# evaluate the decision tree with the d_test data set
-```{r echo=FALSE}
+### evaluate the decision tree with the d_test data set
+```{r }
 pred_rpart <- predict(model_rpart, d_test, type = "class")
 rpart_res <- confusionMatrix(pred_rpart, d_test$classe)
 rpart_res
 ```
 
-# create a second model - Random Forest
-```{r echo=FALSE}
+### Create a second model - Random Forest
+```{r }
 set.seed(1)
 model_rf<-randomForest(classe ~ ., data=d_train)
 ```
-# evaluate the random forest model with the d_test data set
-```{r echo=FALSE}
+### evaluate the random forest model with the d_test data set
+```{r}
 pred_rf <- predict(model_rf, d_test, type = "class")
 rf_res <- confusionMatrix(pred_rf, d_test$classe)
 rf_res
 ```
 
-# create a combined model
-```{r echo=FALSE}
+### Create a third model - Ensamble 
+```{r }
 set.seed(1)
 # Gradient Boosting
 model_gbm<- train(classe~.,data=d_train,method="gbm")
 ```
-# evaluate the gradient boosting model with the d_test data set
-```{r echo=FALSE}
+#### evaluate the gradient boosting model with the d_test data set
+```{r results="hide"}
 pred_gbm <- predict(model_gbm, d_test)
 gbm_res <- confusionMatrix(pred_gbm, d_test$classe)
 gbm_res
 ```
-
-# create a combined (third) model
-```{r echo=FALSE}
+##### create a Linear Discriminant Analysis model
+```{r }
 set.seed(1)
 #Linear Discriminant Analysis
 model_lda <- train(classe ~ ., data=d_train, method="lda")
 ```
-# evaluate the gradient boosting model with the d_test data set
-```{r echo=FALSE}
-
-pred_gbm <- predict(model_gbm, d_test)
-gbm_res <- confusionMatrix(pred_gbm, d_test$classe)
-gbm_res
-```
-# evaluate the LDA
-```{r echo=FALSE}
+#### evaluate the LDA model with the d_test data set
+```{r }
 pred_lda <- predict(model_lda, d_test)
 lda_res <- confusionMatrix(pred_lda, d_test$classe)
 lda_res
 ```
-
-
-# combine lda and gbm
-```{r echo=FALSE}
+### Ensamble the two models together and evaluate
+```{r }
 pred <- data.frame(pred_gbm, pred_lda, classe=d_test$classe)
-```
-
-
-# model combo
-```{r echo=FALSE}
 model_comb <- train(classe ~ ., method="rf", data=pred)
-#in-sample error
 pred_combo <- predict(model_comb, pred)
 confusionMatrix(pred_combo, pred$classe)
 ```
+
 # RF was better than the ensamble, so use the random forest to make the final predictions
-```{r echo=FALSE}
+```{r}
 fin <- predict(model_rf, test_in, type = "class")
 fin
 ```
